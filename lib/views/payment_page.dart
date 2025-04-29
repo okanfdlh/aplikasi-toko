@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,7 +28,10 @@ class _PaymentPageState extends State<PaymentPage> {
     super.initState();
     _loadCustomerData();
   }
-
+Future<void> _clearCart() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove('cart');
+}
   Future<void> _loadCustomerData() async {
   final prefs = await SharedPreferences.getInstance();
   setState(() {
@@ -97,7 +100,7 @@ class _PaymentPageState extends State<PaymentPage> {
     List<Map<String, String>> products = [];
     for (var item in widget.cart) {
       products.add({
-        'id_product': item['id_product'].toString(),
+        'id_product': item['id'].toString(),
         'quantity': item['qty'].toString(),
         'price': item['price'].toString(),
       });
@@ -121,6 +124,7 @@ class _PaymentPageState extends State<PaymentPage> {
         SnackBar(content: Text('Order berhasil dibuat')),
       );
       Navigator.pop(context); // kembali ke halaman sebelumnya
+     // kembali ke halaman sebelumnya
     } else {
       // Tampilkan detail dari response untuk debugging
       final responseString = await response.stream.bytesToString();
