@@ -88,15 +88,15 @@ class _LoginPageState extends State<LoginPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "TOKO SEMBAKO IDA",
+                "TOKO SEMBAKO",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
-              Image.asset(
-                'assets/toko.png',
-                width: 100,
-                height: 100,
-              ),
+              // Image.asset(
+              //   'assets/toko.png',
+              //   width: 100,
+              //   height: 100,
+              // ),
               const SizedBox(height: 10),
               TextField(
                 controller: emailController,

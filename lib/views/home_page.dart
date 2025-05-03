@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-
 import 'login_page.dart'; // untuk logout kembali ke login
 import 'product_page.dart';
 import 'profil_page.dart';
+import 'order_history_page.dart';
+import 'deposit_balance_page.dart';  // Import halaman untuk deposit saldo
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
-
 
   void _logout(BuildContext context) {
     showDialog(
@@ -43,12 +43,12 @@ class HomePage extends StatelessWidget {
           icon: const Icon(Icons.account_circle),
           tooltip: 'Profil',
           onPressed: () {
-              // Navigasi ke halaman Profil
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ProfilePage()),
-              );
-            },
+            // Navigasi ke halaman Profil
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ProfilePage()),
+            );
+          },
         ),
         actions: [
           IconButton(
@@ -62,6 +62,23 @@ class HomePage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
+            // Saldo Pengguna
+            const Text(
+              "Saldo Anda: Rp 1,500,000", // Saldo sementara, ganti dengan data dinamis
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            // Tombol Deposit Saldo
+            _buildMenuCard(
+              context,
+              icon: Icons.account_balance_wallet,
+              title: 'Deposit Saldo',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DepositBalancePage()),
+              ),
+            ),
+            const SizedBox(height: 16),
             const Text(
               "Daftar Barang",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -72,9 +89,19 @@ class HomePage extends StatelessWidget {
               icon: Icons.shopping_bag,
               title: 'Pesan Barang',
               onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProductPage()),
+                context,
+                MaterialPageRoute(builder: (_) => const ProductPage()),
+              ),
             ),
+            const SizedBox(height: 10),
+            _buildMenuCard(
+              context,
+              icon: Icons.history,
+              title: 'Riwayat Orderan',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const OrderHistoryPage()),
+              ),
             ),
           ],
         ),
@@ -96,5 +123,3 @@ class HomePage extends StatelessWidget {
     );
   }
 }
-
-

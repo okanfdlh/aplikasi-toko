@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-
+import 'home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
@@ -82,7 +82,8 @@ Future<void> _clearCart() async {
       ..fields['id_customer'] = _customerId.toString()
       ..fields['alamat'] = _addressController.text
       ..fields['total_item'] = widget.cart.length.toString()
-      ..fields['transaction_time'] = DateTime.now().toIso8601String();
+      ..fields['transaction_time'] = DateTime.now().toIso8601String()
+      ..fields['status'] = 'pending';  // Menambahkan status default 'pending';
 
     // Add Bearer Token to Authorization Header
     request.headers['Authorization'] = 'Bearer $token';  // Add the token
@@ -123,8 +124,8 @@ Future<void> _clearCart() async {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Order berhasil dibuat')),
       );
-      Navigator.pop(context); // kembali ke halaman sebelumnya
-     // kembali ke halaman sebelumnya
+      Navigator.pop(context); // kembali ke home
+
     } else {
       // Tampilkan detail dari response untuk debugging
       final responseString = await response.stream.bytesToString();
