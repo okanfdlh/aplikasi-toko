@@ -1,12 +1,45 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'login_page.dart'; // untuk logout kembali ke login
 import 'product_page.dart';
 import 'profil_page.dart';
 import 'order_history_page.dart';
 import 'deposit_balance_page.dart';  // Import halaman untuk deposit saldo
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
+  // Fungsi untuk mendapatkan token dari SharedPreferences
+  Future<String> getToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token') ?? ''; // Mengembalikan token atau string kosong jika tidak ada
+  }
+
+  // Fungsi untuk mendapatkan saldo
+  Future<double> getSaldo(int customerId) async {
+  String token = await getToken();
+
+  if (token.isEmpty) {
+    throw Exception('Token tidak ditemukan');
+  }
+
+  final response = await http.get(
+    Uri.parse('http://127.0.0.1:8000/api/customer/$customerId/saldo'),
+    headers: {
+      'Authorization': 'Bearer $token',
+    },
+  );
+
+  if (response.statusCode == 200) {
+    var data = json.decode(response.body);
+    double saldo = double.parse(data['saldo'].toString()); // Mengonversi saldo menjadi double
+    return saldo;
+  } else {
+    throw Exception('Failed to load saldo');
+  }
+}
 
   void _logout(BuildContext context) {
     showDialog(
@@ -36,6 +69,9 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ganti dengan ID pelanggan yang sesuai
+    final int customerId = 1;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Toko Sembako Ida"),
@@ -63,10 +99,25 @@ class HomePage extends StatelessWidget {
         child: ListView(
           children: [
             // Saldo Pengguna
-            const Text(
-              "Saldo Anda: Rp 1,500,000", // Saldo sementara, ganti dengan data dinamis
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            FutureBuilder<double>(
+              future: getSaldo(customerId), // Ambil saldo berdasarkan customerId
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Text("Error: ${snapshot.error}");
+                } else if (snapshot.hasData) {
+                  double saldo = snapshot.data!; // Ambil data saldo yang bertipe double
+                  return Text(
+                    "Saldo Anda: Rp ${saldo.toStringAsFixed(0)}", // Format saldo
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  );
+                } else {
+                  return const Text("Saldo tidak ditemukan");
+                }
+              },
             ),
+
             const SizedBox(height: 16),
             // Tombol Deposit Saldo
             _buildMenuCard(
