@@ -28,7 +28,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         throw Exception("Customer ID tidak ditemukan di SharedPreferences.");
       }
 
-      final url = Uri.parse('http://10.0.2.2:8000/api/order/$customerId');
+      final url = Uri.parse('http://127.0.0.1:8000/api/order/$customerId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -69,7 +69,7 @@ Future<void> _updateOrderStatus(int orderId, String newStatus) async {
     final token = prefs.getString('token');
 
     final response = await http.put(
-      Uri.parse('http://10.0.2.2:8000/api/order/$orderId/status'),
+      Uri.parse('http://127.0.0.1:8000/api/order/$orderId/status'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token', // jika dibutuhkan

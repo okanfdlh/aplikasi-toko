@@ -46,15 +46,16 @@ class _CartPageState extends State<CartPage> {
   }
 
   void updateQty(int index, int delta) {
-    setState(() {
-      localCart[index]['qty'] += delta;
-      if (localCart[index]['qty'] <= 0) {
-        localCart[index]['qty'] = 1;
-      }
-    });
-    saveCart(); // Simpan perubahan cart setelah update qty
-    widget.onCartUpdate(localCart);
-  }
+  setState(() {
+    localCart[index]['qty'] += delta;
+    if (localCart[index]['qty'] <= 0) {
+      removeItem(index);  // Remove item if quantity is zero or less
+    }
+  });
+  saveCart();
+  widget.onCartUpdate(localCart);
+}
+
 
   void removeItem(int index) {
     setState(() {

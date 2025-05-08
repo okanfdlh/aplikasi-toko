@@ -21,7 +21,7 @@ class _RegisterPageState extends State<RegisterPage> {
   setState(() => _isLoading = true);
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/storeCustomer'),
+      Uri.parse('http://127.0.0.1:8000/api/storeCustomer'),
       body: {
         'name': nameController.text,
         'email': emailController.text,
@@ -81,15 +81,15 @@ class _RegisterPageState extends State<RegisterPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                "TOKO SEMBAKO IDA",
+                "TOKO SEMBAKO",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 10),
-              Image.asset(
-                'assets/toko.png',
-                width: 100,
-                height: 100,
-              ),
+              // const SizedBox(height: 10),
+              // Image.asset(
+              //   'assets/toko.png',
+              //   width: 100,
+              //   height: 100,
+              // ),
               const SizedBox(height: 10),
               TextField(
                 controller: nameController,
