@@ -55,7 +55,7 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
     final customerId = 1; // Ganti dengan ID customer yang aktif
 
     // Membuat request untuk deposit
-    final url = Uri.parse('http://127.0.0.1:8000/api/customers/$customerId/deposit');
+    final url = Uri.parse('http://10.0.2.2:8000/api/deposit/$customerId');
     final request = http.MultipartRequest('POST', url)
       ..headers['Authorization'] = 'Bearer $token'
       ..fields['amount'] = amount.toString()
@@ -84,8 +84,8 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
     if (response.statusCode == 302) {
       // Redirect terjadi, arahkan pengguna ke halaman login
       print("Token tidak valid atau kadaluarsa. Arahkan ke login.");
-      // _navigateToLoginPage();
-    } else if (response.statusCode == 200) {
+      _navigateToLoginPage();
+    } else if (response.statusCode == 200 |201) {
       final responseBody = await response.stream.bytesToString();
       final json = jsonDecode(responseBody);
       print("Sukses: ${json['message']}");
@@ -101,12 +101,12 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
   }
 
   // Fungsi untuk mengarahkan pengguna ke halaman login
-  // void _navigateToLoginPage() {
-  //   Navigator.pushReplacement(
-  //     context,
-  //     MaterialPageRoute(builder: (context) => LoginPage()), // Ganti LoginPage dengan halaman login Anda
-  //   );
-  // }
+  void _navigateToLoginPage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => LoginPage()), // Ganti LoginPage dengan halaman login Anda
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

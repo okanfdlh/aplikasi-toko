@@ -52,7 +52,7 @@ class _ProductPageState extends State<ProductPage> {
       final token = prefs.getString('token') ?? '';
 
       final response = await http.get(
-        Uri.parse('http://127.0.0.1:8000/api/getProduct'),
+        Uri.parse('http://10.0.2.2:8000/api/getProduct'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',

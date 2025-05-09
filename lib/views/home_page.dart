@@ -4,7 +4,8 @@ import 'login_page.dart'; // untuk logout kembali ke login
 import 'product_page.dart';
 import 'profil_page.dart';
 import 'order_history_page.dart';
-import 'deposit_balance_page.dart';  // Import halaman untuk deposit saldo
+import 'deposit_balance_page.dart';
+import 'deposit_history_page.dart';  // Import halaman untuk deposit saldo
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,7 +27,7 @@ class HomePage extends StatelessWidget {
   }
 
   final response = await http.get(
-    Uri.parse('http://127.0.0.1:8000/api/customer/$customerId/saldo'),
+    Uri.parse('http://10.0.2.2:8000/api/customer/$customerId/saldo'),
     headers: {
       'Authorization': 'Bearer $token',
     },
@@ -152,6 +153,16 @@ class HomePage extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const OrderHistoryPage()),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _buildMenuCard(
+              context,
+              icon: Icons.history,
+              title: 'Riwayat Deposit',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DepositHistoryPage()),
               ),
             ),
           ],

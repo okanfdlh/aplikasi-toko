@@ -21,7 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   setState(() => _isLoading = true);
   try {
     final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/api/loginCustomer'),
+      Uri.parse('http://10.0.2.2:8000/api/loginCustomer'),
       body: {
         'email': emailController.text,
         'password': passwordController.text,
