@@ -174,9 +174,44 @@ class _ProductPageState extends State<ProductPage> {
                     itemCount: filteredProducts.length,
                     itemBuilder: (context, index) {
                       final product = filteredProducts[index];
+                      final imageUrl = product['image'] != null
+                        ? 'http://10.0.2.2:8000/storage/products/${product['image']}'
+                        : null;
+
                       return Card(
                         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         child: ListTile(
+                          leading: imageUrl != null
+                            ? SizedBox(
+                                width: 60,
+                                height: 60,
+                                child: Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) {
+                                      return child;
+                                    } else {
+                                      return Center(
+                                        child: CircularProgressIndicator(
+                                          value: loadingProgress.expectedTotalBytes != null
+                                              ? loadingProgress.cumulativeBytesLoaded /
+                                                  (loadingProgress.expectedTotalBytes ?? 1)
+                                              : null,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(Icons.image_not_supported);
+                                  },
+                                ),
+                              )
+                            : const SizedBox(
+                                width: 60,
+                                height: 60,
+                                child: Icon(Icons.image_not_supported),
+                              ),
                           title: Text(product['name'] ?? 'Tanpa Nama'),
                           subtitle: Text(
                               'Stok: ${product['stock']} | Kategori: ${product['category']['name']}'),
