@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
+import 'package:dotted_border/dotted_border.dart';
+
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -70,7 +73,7 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<Map<int, int>> _fetchStockData() async {
-    final response = await http.get(Uri.parse('http://127.0.0.1:8000/api/getProduct'));
+    final response = await http.get(Uri.parse('http://10.0.2.2:8000/api/getProduct'));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseJson = jsonDecode(response.body);
@@ -102,7 +105,7 @@ Future<void> _submitOrder() async {
       final token = prefs.getString('token') ?? '';
       print("Token: $token");
 
-      final uri = Uri.parse('http://127.0.0.1:8000/api/order');
+      final uri = Uri.parse('http://10.0.2.2:8000/api/order');
       var request = http.MultipartRequest('POST', uri)
         ..fields['id_customer'] = _customerId.toString()
         ..fields['alamat'] = _addressController.text
@@ -199,63 +202,161 @@ Future<void> _submitOrder() async {
 
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Form Pembayaran")),
-      body: _customerId == null || _name == null
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Total yang harus dibayar: Rp ${widget.total}"),
-                    const SizedBox(height: 20),
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            enabled: false,
-                            initialValue: _name,
-                            decoration: const InputDecoration(labelText: 'Nama Lengkap'),
-                          ),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                            controller: _addressController,
-                            decoration: const InputDecoration(labelText: 'Alamat Pengiriman'),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Alamat tidak boleh kosong';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              ElevatedButton(
-                                onPressed: _pickPaymentProof,
-                                child: const Text('Pilih Bukti Pembayaran'),
-                              ),
-                              const SizedBox(width: 10),
-                              if (_bukti_pembayaran != null) 
-                                Text('Bukti terpilih', style: TextStyle(color: Colors.green)),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: _submitOrder,
-                            child: const Text('Kirim Order'),
-                          ),
-                        ],
-                      ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    backgroundColor: Colors.brown.shade50,
+    appBar: AppBar(
+      title: const Text("Pembayaran"),
+      backgroundColor: Colors.cyan[100],
+      elevation: 4,
+    ),
+    body: _customerId == null || _name == null
+        ? const Center(child: CircularProgressIndicator())
+        : AnimatedOpacity(
+            duration: const Duration(milliseconds: 500),
+            opacity: 1.0,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Total Pembayaran
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.receipt_long, size: 36, color: Colors.blue),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(
+                            "Total Pembayaran:\nRp ${widget.total}",
+                            style: GoogleFonts.montserrat(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[800],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  // Form Input
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Data Pemesan", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        TextFormField(
+                          enabled: false,
+                          initialValue: _name,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.person),
+                            filled: true,
+                            fillColor: Colors.white,
+                            labelText: 'Nama Lengkap',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _addressController,
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.location_on),
+                            filled: true,
+                            fillColor: Colors.white,
+                            labelText: 'Alamat Pengiriman',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Alamat tidak boleh kosong';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 30),
+
+                        const Text("Bukti Pembayaran", style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: _pickPaymentProof,
+                          child: DottedBorder(
+                            borderType: BorderType.RRect,
+                            radius: const Radius.circular(12),
+                            dashPattern: [8, 4],
+                            color: Colors.brown,
+                            child: Container(
+                              height: 160,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: _bukti_pembayaran != null
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.file(
+                                        _bukti_pembayaran!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.upload_file, color: Colors.brown, size: 40),
+                                          const SizedBox(height: 10),
+                                          const Text("Klik untuk pilih bukti pembayaran"),
+                                        ],
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 30),
+
+                        // Tombol Submit
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _submitOrder,
+                            icon: const Icon(Icons.send),
+                            label: const Text('Kirim Pesanan'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[700],
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              textStyle: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-    );
-  }
+          ),
+  );
+}
 }

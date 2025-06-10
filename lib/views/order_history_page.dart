@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class OrderHistoryPage extends StatefulWidget {
   const OrderHistoryPage({super.key});
@@ -14,10 +15,40 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
   List<dynamic> _orderHistory = [];
   bool _isLoading = true;
 
+  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+
   @override
   void initState() {
     super.initState();
+
+    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    flutterLocalNotificationsPlugin.initialize(initSettings);
+
     _fetchOrderHistory();
+  }
+
+
+  Future<void> _showNotification(String title, String body) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'order_status_channel',
+      'Order Status',
+      channelDescription: 'Notifikasi perubahan status orderan',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+    );
+
+    const NotificationDetails platformDetails =
+        NotificationDetails(android: androidDetails);
+
+    await flutterLocalNotificationsPlugin.show(
+      0, // ID notifikasi
+      title,
+      body,
+      platformDetails,
+    );
   }
 
   Future<void> _fetchOrderHistory() async {
@@ -28,7 +59,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         throw Exception("Customer ID tidak ditemukan di SharedPreferences.");
       }
 
-      final url = Uri.parse('http://127.0.0.1:8000/api/order/$customerId');
+      final url = Uri.parse('http://10.0.2.2:8000/api/order/$customerId');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
@@ -69,7 +100,7 @@ Future<void> _updateOrderStatus(int orderId, String newStatus) async {
     final token = prefs.getString('token');
 
     final response = await http.put(
-      Uri.parse('http://127.0.0.1:8000/api/order/$orderId/status'),
+      Uri.parse('http://10.0.2.2:8000/api/order/$orderId/status'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token', // jika dibutuhkan
@@ -80,6 +111,10 @@ Future<void> _updateOrderStatus(int orderId, String newStatus) async {
     if (response.statusCode == 200) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Status order berhasil diubah ke "$newStatus".')),
+      );
+      await _showNotification(
+        "Status Order Berubah",
+        "Pesanan #$orderId telah ditandai sebagai $newStatus.",
       );
       _fetchOrderHistory(); // refresh list
     } else {
@@ -93,110 +128,169 @@ Future<void> _updateOrderStatus(int orderId, String newStatus) async {
 }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Riwayat Orderan')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _orderHistory.isEmpty
-              ? const Center(child: Text("Belum ada riwayat order."))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _orderHistory.length,
-                  itemBuilder: (context, index) {
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Riwayat Orderan'),
+      backgroundColor: Colors.blueAccent,
+      elevation: 0,
+    ),
+    body: _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _orderHistory.isEmpty
+            ? const Center(child: Text("Belum ada riwayat order."))
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: _orderHistory.length,
+                itemBuilder: (context, index) {
                   final order = _orderHistory[index];
                   final orderItems = order['order_items'] as List<dynamic>;
                   final total = orderItems.isNotEmpty ? orderItems[0]['total'] : '0';
-                  return Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    child: ListTile(
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-                        ),
-                        builder: (context) {
-                          return Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Detail Order ID: ${order['id']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 10),
-                                ...orderItems.map<Widget>((item) {
-                                final productName = item['product']?['name'] ?? 'Produk tidak ditemukan';
-                                return ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text('Produk: $productName'),
-                                  subtitle: Text('Jumlah: ${item['quantity']} • Harga: Rp${item['price']}'),
-                                  trailing: Text('Rp${item['total']}'),
-                                );
-                              }).toList(),  
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                      leading: const Icon(Icons.receipt_long, color: Colors.blue),
-                      title: Text('ID Order: ${order['id']}'),
-                      subtitle: Text('Tanggal: ${order['transaction_time']}\nTotal: Rp$total'),
-                      trailing: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          order['status'],
-                          style: TextStyle(
-                            color: _getStatusColor(order['status']),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        if (order['status'].toLowerCase() != 'selesai')
-                          TextButton(
-                            onPressed: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Konfirmasi'),
-                                  content: const Text('Apakah Anda yakin ingin menyelesaikan pesanan ini?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.of(context).pop(),
-                                      child: const Text('Batal'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.of(context).pop(); // Tutup dialog
-                                        _updateOrderStatus(order['id'], 'selesai'); // Lanjut ubah status
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.green,
-                                      ),
-                                      child: const Text('Ya, Selesai'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            child: const Text('Selesai'),
-                            style: TextButton.styleFrom(
-                              foregroundColor: Colors.green,
-                            ),
-                          ),
 
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
-
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (context) {
+                            return Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Detail Order #${order['id']}',
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  ...orderItems.map<Widget>((item) {
+                                    final productName = item['product']?['name'] ?? 'Produk tidak ditemukan';
+                                    return ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(productName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                      subtitle: Text(
+                                        'Jumlah: ${item['quantity']} • Harga: Rp${item['price']}',
+                                        style: const TextStyle(color: Colors.grey),
+                                      ),
+                                      trailing: Text(
+                                        'Rp${item['total']}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ],
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.receipt_long, color: Colors.blue),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Order #${order['id']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _getStatusColor(order['status']).withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    order['status'].toUpperCase(),
+                                    style: TextStyle(
+                                      color: _getStatusColor(order['status']),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Tanggal: ${order['transaction_time']}',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Total: Rp$total',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 12),
+                            if (order['status'].toLowerCase() != 'selesai')
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Konfirmasi'),
+                                        content: const Text('Apakah Anda yakin ingin menyelesaikan pesanan ini?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.of(context).pop(),
+                                            child: const Text('Batal'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              _updateOrderStatus(order['id'], 'selesai');
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.green,
+                                            ),
+                                            child: const Text('Ya, Selesai'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.check_circle, color: Colors.green),
+                                  label: const Text('Tandai Selesai'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.green,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   );
                 },
-
-                ),
-    );
-  }
+              ),
+  );
+}
 }

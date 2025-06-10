@@ -11,7 +11,7 @@ class ProductPage extends StatefulWidget {
   State<ProductPage> createState() => _ProductPageState();
 }
 
-class _ProductPageState extends State<ProductPage> {
+class _ProductPageState extends State<ProductPage> with TickerProviderStateMixin {
   List products = [];
   List filteredProducts = [];
   List<String> categories = [];
@@ -19,14 +19,25 @@ class _ProductPageState extends State<ProductPage> {
   List<Map<String, dynamic>> cart = [];
   bool isLoading = true;
 
+  late AnimationController _animationController;
+
   @override
   void initState() {
     super.initState();
     loadCart();
     fetchProducts();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
   }
 
-  // Fungsi untuk mengambil cart dari SharedPreferences
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   Future<void> loadCart() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? cartString = prefs.getString('cart');
@@ -38,14 +49,12 @@ class _ProductPageState extends State<ProductPage> {
     }
   }
 
-  // Fungsi untuk menyimpan cart ke SharedPreferences
   Future<void> saveCart() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String cartString = json.encode(cart);
     await prefs.setString('cart', cartString);
   }
 
-  // Mengambil data produk dari API
   Future<void> fetchProducts() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -73,6 +82,8 @@ class _ProductPageState extends State<ProductPage> {
           categories = ['Semua', ...categoryNames];
           isLoading = false;
         });
+
+        _animationController.forward(); // mulai animasi
       } else {
         throw Exception('Gagal mengambil produk');
       }
@@ -85,7 +96,6 @@ class _ProductPageState extends State<ProductPage> {
     }
   }
 
-  // Filter produk berdasarkan kategori
   void filterByCategory(String category) {
     setState(() {
       selectedCategory = category;
@@ -99,7 +109,6 @@ class _ProductPageState extends State<ProductPage> {
     });
   }
 
-  // Menambahkan produk ke keranjang
   void addToCart(Map<String, dynamic> product) {
     setState(() {
       final existingIndex = cart.indexWhere((item) => item['id'] == product['id']);
@@ -115,124 +124,196 @@ class _ProductPageState extends State<ProductPage> {
       }
     });
 
-    saveCart(); // Simpan keranjang ke SharedPreferences
+    saveCart();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${product['name']} ditambahkan ke keranjang')),
     );
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Produk'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.shopping_cart),
-            tooltip: 'Lihat Keranjang (${cart.length})',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CartPage(
-                    cart: cart,
-                    onCartUpdate: (updatedCart) {
-                      setState(() {
-                        cart = updatedCart;
-                      });
-                      saveCart(); // Simpan perubahan keranjang setelah update
-                    },
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text('Daftar Produk'),
+      backgroundColor: Colors.cyan[100],
+      actions: [
+        IconButton(
+          icon: Stack(
+            children: [
+              const Icon(Icons.shopping_cart),
+              if (cart.isNotEmpty)
+                Positioned(
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      '${cart.length}',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
-              );
-            },
+            ],
           ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: DropdownButton<String>(
-                    value: selectedCategory,
-                    isExpanded: true,
-                    onChanged: (value) {
-                      if (value != null) filterByCategory(value);
-                    },
-                    items: categories
-                        .map((cat) => DropdownMenuItem(
-                              value: cat,
-                              child: Text(cat),
-                            ))
-                        .toList(),
-                  ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => CartPage(
+                  cart: cart,
+                  onCartUpdate: (updatedCart) {
+                    setState(() {
+                      cart = updatedCart;
+                    });
+                    saveCart();
+                  },
                 ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = filteredProducts[index];
-                      final imageUrl = product['image'] != null
+              ),
+            );
+          },
+        ),
+      ],
+    ),
+    body: isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : SafeArea(
+        child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                width: double.infinity,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: categories.map((cat) {
+                    return ChoiceChip(
+                      label: Text(cat),
+                      selected: selectedCategory == cat,
+                      onSelected: (_) => filterByCategory(cat),
+                      selectedColor: Colors.blueAccent,
+                      labelStyle: TextStyle(
+                        color: selectedCategory == cat ? Colors.white : Colors.black,
+                      ),
+                      backgroundColor: Colors.grey.shade200,
+                    );
+                  }).toList(),
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 0.75,
+                  ),
+                  itemCount: filteredProducts.length,
+                  itemBuilder: (context, index) {
+                    final product = filteredProducts[index];
+                    final imageUrl = product['image'] != null
                         ? 'http://10.0.2.2:8000/storage/products/${product['image']}'
                         : null;
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: ListTile(
-                          leading: imageUrl != null
-                            ? SizedBox(
-                                width: 60,
-                                height: 60,
-                                child: Image.network(
-                                  imageUrl,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (context, child, loadingProgress) {
-                                    if (loadingProgress == null) {
-                                      return child;
-                                    } else {
-                                      return Center(
-                                        child: CircularProgressIndicator(
-                                          value: loadingProgress.expectedTotalBytes != null
-                                              ? loadingProgress.cumulativeBytesLoaded /
-                                                  (loadingProgress.expectedTotalBytes ?? 1)
-                                              : null,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(Icons.image_not_supported);
-                                  },
-                                ),
-                              )
-                            : const SizedBox(
-                                width: 60,
-                                height: 60,
-                                child: Icon(Icons.image_not_supported),
+                    return SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(1, 0),
+                        end: Offset.zero,
+                      ).animate(CurvedAnimation(
+                        parent: _animationController,
+                        curve: Interval((index / filteredProducts.length), 1.0, curve: Curves.easeOut),
+                      )),
+                      child: FadeTransition(
+                        opacity: _animationController,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.grey.shade300,
+                                blurRadius: 6,
+                                offset: const Offset(0, 4),
                               ),
-                          title: Text(product['name'] ?? 'Tanpa Nama'),
-                          subtitle: Text(
-                              'Stok: ${product['stock']} | Kategori: ${product['category']['name']}'),
-                          trailing: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Rp ${product['price']}'),
-                              const SizedBox(height: 4),
-                              ElevatedButton(
-                                onPressed: () => addToCart(product),
-                                child: const Text('+ Keranjang'),
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                                child: imageUrl != null
+                                    ? Image.network(
+                                        imageUrl,
+                                        height: 120,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : Container(
+                                        height: 120,
+                                        color: Colors.grey.shade200,
+                                        child: const Icon(Icons.image, size: 60, color: Colors.grey),
+                                      ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product['name'] ?? 'Tanpa Nama',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Rp ${product['price']}',
+                                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
+                                    ),
+                                    Text(
+                                      'Stok: ${product['stock']}',
+                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                    Text(
+                                      product['category']?['name'] ?? '',
+                                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => addToCart(product),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blueAccent,
+                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        icon: const Icon(Icons.add_shopping_cart, size: 16),
+                                        label: const Text('Keranjang', style: TextStyle(fontSize: 14)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
-    );
-  }
+              ),
+            ],
+          ),
+  )
+  );
+}
 }

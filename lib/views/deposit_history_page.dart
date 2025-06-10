@@ -20,16 +20,12 @@ class _DepositHistoryPageState extends State<DepositHistoryPage> {
     _loadDepositHistory();
   }
 
-  // Memuat riwayat deposit
   Future<void> _loadDepositHistory() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      int? customerId = prefs.getInt('customer_id'); // Ganti sesuai key yg kamu pakai
-      if (customerId == null) {
-        print('Customer ID tidak ditemukan di SharedPreferences');
-        throw Exception('Customer ID tidak ditemukan');
-      }
-      print('Customer ID: $customerId');
+      int? customerId = prefs.getInt('customer_id');
+      if (customerId == null) throw Exception('Customer ID tidak ditemukan');
+
       setState(() {
         _depositHistory = getDepositHistory(customerId);
       });
@@ -38,93 +34,76 @@ class _DepositHistoryPageState extends State<DepositHistoryPage> {
     }
   }
 
-  // Fungsi untuk mendapatkan token dari SharedPreferences
   Future<String> getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? token = prefs.getString('token');
-    if (token == null || token.isEmpty) {
-      print('Token tidak ditemukan di SharedPreferences');
-      return '';
-    }
-    print('Token: $token');
-    return token;
+    return prefs.getString('token') ?? '';
   }
 
-  // Fungsi untuk mendapatkan riwayat deposit
   Future<List<Map<String, dynamic>>> getDepositHistory(int customerId) async {
-  String token = await getToken();
+    String token = await getToken();
+    if (token.isEmpty) throw Exception('Token tidak ditemukan');
 
-  if (token.isEmpty) {
-    throw Exception('Token tidak ditemukan');
-  }
-
-  try {
     final response = await http.get(
       Uri.parse('http://10.0.2.2:8000/api/deposits/$customerId'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Accept': 'application/json', // Penting agar Laravel tidak redirect
+        'Accept': 'application/json',
       },
     );
 
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
-
     if (response.statusCode == 200) {
       var jsonResponse = json.decode(response.body);
-
-      if (jsonResponse['data'] is List) {
-        List<Map<String, dynamic>> depositHistory =
-            List<Map<String, dynamic>>.from(jsonResponse['data']);
-        return depositHistory;
-      } else {
-        throw Exception('Format data tidak sesuai');
-      }
+      return List<Map<String, dynamic>>.from(jsonResponse['data']);
     } else {
-      throw Exception('Gagal memuat riwayat deposit: ${response.statusCode}');
+      throw Exception('Gagal memuat riwayat deposit');
     }
-  } catch (e) {
-    print('Error saat fetch data deposit: $e');
-    rethrow;
   }
-}
-IconData _getStatusIcon(String status) {
-  switch (status) {
-    case 'approved':
-      return Icons.check_circle;
-    case 'pending':
-      return Icons.hourglass_empty;
-    case 'rejected':
-      return Icons.cancel;
-    default:
-      return Icons.help_outline;
-  }
-}
 
-Color _getStatusColor(String status) {
-  switch (status) {
-    case 'approved':
-      return Colors.green;
-    case 'pending':
-      return Colors.orange;
-    case 'rejected':
-      return Colors.red;
-    default:
-      return Colors.grey;
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'approved':
+        return Icons.check_circle;
+      case 'pending':
+        return Icons.hourglass_bottom;
+      case 'rejected':
+        return Icons.cancel;
+      default:
+        return Icons.help_outline;
+    }
   }
-}
 
-String _getStatusLabel(String status) {
-  switch (status) {
-    case 'approved':
-      return 'Disetujui';
-    case 'pending':
-      return 'Menunggu';
-    case 'rejected':
-      return 'Ditolak';
-    default:
-      return 'Tidak Diketahui';
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'approved':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
   }
+
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'approved':
+        return 'Disetujui';
+      case 'pending':
+        return 'Menunggu';
+      case 'rejected':
+        return 'Ditolak';
+      default:
+        return 'Tidak Diketahui';
+    }
+  }
+
+  String _formatCurrency(dynamic amount) {
+  final formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  
+  // Pastikan amount adalah num
+  final numericAmount = double.tryParse(amount.toString()) ?? 0;
+  return formatter.format(numericAmount);
 }
 
 
@@ -141,29 +120,51 @@ String _getStatusLabel(String status) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text("Error: ${snapshot.error}"));
-          } else if (snapshot.hasData) {
-            List<Map<String, dynamic>> depositHistory = snapshot.data!;
+          } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+            List<Map<String, dynamic>> deposits = snapshot.data!;
             return ListView.builder(
-              itemCount: depositHistory.length,
+              padding: const EdgeInsets.all(12),
+              itemCount: deposits.length,
               itemBuilder: (context, index) {
-                var deposit = depositHistory[index];
-
-                String formattedDate = DateFormat('yyyy-MM-dd – kk:mm')
+                final deposit = deposits[index];
+                final date = DateFormat('dd MMM yyyy • HH:mm')
                     .format(DateTime.parse(deposit['created_at']));
 
                 return Card(
-                  margin: const EdgeInsets.all(8.0),
-                  child: ListTile(
-                    title: Text("Jumlah: Rp ${deposit['amount']}"),
-                    subtitle: Text("Tanggal: $formattedDate"),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
                       children: [
                         Icon(
                           _getStatusIcon(deposit['status']),
                           color: _getStatusColor(deposit['status']),
+                          size: 36,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _formatCurrency(deposit['amount']),
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                "Tanggal: $date",
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
                         Text(
                           _getStatusLabel(deposit['status']),
                           style: TextStyle(
@@ -173,13 +174,12 @@ String _getStatusLabel(String status) {
                         ),
                       ],
                     ),
-
                   ),
                 );
               },
             );
           } else {
-            return const Center(child: Text("Tidak ada riwayat deposit"));
+            return const Center(child: Text("Tidak ada riwayat deposit."));
           }
         },
       ),

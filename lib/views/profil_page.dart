@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'login_page.dart'; // pastikan ini sesuai dengan nama file login kamu
+import 'login_page.dart'; // sesuaikan jika beda nama
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -29,7 +29,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // hapus semua data
+    await prefs.clear();
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
@@ -37,24 +37,56 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return '?';
+    return name.trim().substring(0, 1).toUpperCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Profil Pengguna')),
-      body: Center(
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.account_circle, size: 100),
+            // Avatar dengan inisial nama
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.blueAccent,
+              child: Text(
+                _getInitials(_name),
+                style: const TextStyle(
+                  fontSize: 40,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
-            Text(_name, style: const TextStyle(fontSize: 24)),
-            Text(_email, style: const TextStyle(fontSize: 16)),
+
+            Text(
+              _name,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600),
+            ),
+            Text(
+              _email,
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+
             const SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: _logout,
-              child: const Text("Logout"),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout),
+                label: const Text("Logout"),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ),
           ],

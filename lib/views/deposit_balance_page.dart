@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'login_page.dart';  // Ganti dengan halaman login Anda
+import 'login_page.dart';
 
 class DepositBalancePage extends StatefulWidget {
   const DepositBalancePage({super.key});
@@ -16,13 +16,11 @@ class DepositBalancePage extends StatefulWidget {
 class _DepositBalancePageState extends State<DepositBalancePage> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
-  File? _proofFile; // Menyimpan file bukti transfer
-
+  File? _proofFile;
   final ImagePicker _picker = ImagePicker();
 
-  // Fungsi untuk memilih gambar bukti transfer dari galeri atau kamera
   Future<void> _pickProof() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery); // Bisa ganti source ke kamera (ImageSource.camera)
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
       setState(() {
         _proofFile = File(pickedFile.path);
@@ -30,32 +28,24 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
     }
   }
 
-  // Fungsi untuk mengupload deposit beserta bukti transfer
   Future<void> _uploadProof() async {
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Masukkan jumlah yang valid")),
-      );
+      _showSnackbar("Masukkan jumlah yang valid");
       return;
     }
 
-    // Ambil token yang disimpan di SharedPreferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
-    print("Token yang diambil: $token");
 
     if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Anda harus login terlebih dahulu")),
-      );
+      _showSnackbar("Anda harus login terlebih dahulu");
       return;
     }
 
-    final customerId = 1; // Ganti dengan ID customer yang aktif
-
-    // Membuat request untuk deposit
+    final customerId = 1;
     final url = Uri.parse('http://10.0.2.2:8000/api/deposit/$customerId');
+
     final request = http.MultipartRequest('POST', url)
       ..headers['Authorization'] = 'Bearer $token'
       ..fields['amount'] = amount.toString()
@@ -64,85 +54,124 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
     if (_proofFile != null) {
       final mimeType = _proofFile!.path.split('.').last.toLowerCase();
       if (['jpg', 'jpeg', 'png', 'pdf'].contains(mimeType)) {
-        // Memastikan file sesuai dengan format yang diterima
         request.files.add(await http.MultipartFile.fromPath('proof', _proofFile!.path));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("File harus berupa gambar atau PDF")),
-        );
+        _showSnackbar("File harus berupa gambar atau PDF");
         return;
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Bukti transfer harus diunggah")),
-      );
+      _showSnackbar("Bukti transfer harus diunggah");
       return;
     }
 
     final response = await request.send();
 
     if (response.statusCode == 302) {
-      // Redirect terjadi, arahkan pengguna ke halaman login
-      print("Token tidak valid atau kadaluarsa. Arahkan ke login.");
       _navigateToLoginPage();
-    } else if (response.statusCode == 200 |201) {
+    } else if (response.statusCode == 200 || response.statusCode == 201) {
       final responseBody = await response.stream.bytesToString();
       final json = jsonDecode(responseBody);
-      print("Sukses: ${json['message']}");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(json['message'])),
-      );
+      _showSnackbar(json['message']);
     } else {
-      print("Gagal: ${response.statusCode}");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gagal menambahkan saldo")),
-      );
+      _showSnackbar("Gagal menambahkan saldo (${response.statusCode})");
     }
   }
 
-  // Fungsi untuk mengarahkan pengguna ke halaman login
   void _navigateToLoginPage() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => LoginPage()), // Ganti LoginPage dengan halaman login Anda
+      MaterialPageRoute(builder: (context) => const LoginPage()),
     );
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final Color primaryColor = Colors.cyan.shade600;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Deposit Saldo"),
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 2,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text("Jumlah Deposit",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
+            const SizedBox(height: 8),
             TextField(
               controller: _amountController,
-              decoration: const InputDecoration(labelText: "Jumlah Deposit"),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.attach_money),
+                hintText: "Masukkan jumlah dalam angka",
+                filled: true,
+                fillColor: Colors.cyan.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               keyboardType: TextInputType.number,
             ),
+            const SizedBox(height: 20),
+
+            Text("Catatan (Opsional)",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
+            const SizedBox(height: 8),
             TextField(
               controller: _noteController,
-              decoration: const InputDecoration(labelText: "Catatan (Opsional)"),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: _pickProof, // Pilih gambar bukti transfer
-              child: const Text("Pilih Bukti Top-up"),
-            ),
-            if (_proofFile != null)
-              Image.file(
-                _proofFile!,
-                height: 150,
-                width: 150,
-                fit: BoxFit.cover,
+              decoration: InputDecoration(
+                hintText: "Contoh: Transfer via BCA",
+                filled: true,
+                fillColor: Colors.cyan.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
-            const SizedBox(height: 10),
-            ElevatedButton(
+              maxLines: 2,
+            ),
+            const SizedBox(height: 20),
+
+            ElevatedButton.icon(
+              onPressed: _pickProof,
+              icon: const Icon(Icons.upload_file),
+              label: const Text("Pilih Bukti Transfer"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+            if (_proofFile != null)
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                clipBehavior: Clip.antiAlias,
+                child: Image.file(
+                  _proofFile!,
+                  height: 180,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+
+            const SizedBox(height: 30),
+            ElevatedButton.icon(
               onPressed: _uploadProof,
-              child: const Text("Unggah Bukti Top-up"),
+              icon: const Icon(Icons.send),
+              label: const Text("Unggah Bukti"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
           ],
         ),
