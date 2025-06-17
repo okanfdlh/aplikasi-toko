@@ -21,7 +21,7 @@ class _RegisterPageState extends State<RegisterPage> {
   setState(() => _isLoading = true);
   try {
     final response = await http.post(
-      Uri.parse('http://127.0.0.1:8000/api/storeCustomer'),
+      Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/storeCustomer'),
       body: {
         'name': nameController.text,
         'email': emailController.text,

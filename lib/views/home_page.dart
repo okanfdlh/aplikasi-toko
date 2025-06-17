@@ -27,7 +27,7 @@ class HomePage extends StatelessWidget {
     }
 
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:8000/api/customer/$customerId/saldo'),
+      Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/customer/$customerId/saldo'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
