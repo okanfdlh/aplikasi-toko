@@ -12,12 +12,63 @@ class DepositBalancePage extends StatefulWidget {
   @override
   _DepositBalancePageState createState() => _DepositBalancePageState();
 }
+class FullScreenImagePage extends StatelessWidget {
+  final String imageUrl;
+
+  const FullScreenImagePage({super.key, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Center(
+        child: InteractiveViewer( // memungkinkan zoom dan geser
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 class _DepositBalancePageState extends State<DepositBalancePage> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
   File? _proofFile;
   final ImagePicker _picker = ImagePicker();
+
+  // Tambahan untuk profil toko
+  String? ownerName;
+  String? phoneNumber;
+  String? logoUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStoreProfile();
+  }
+
+  Future<void> _fetchStoreProfile() async {
+    final response = await http.get(Uri.parse('http://192.168.100.51:8000/api/store-profile'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body)['data'];
+      setState(() {
+        ownerName = data['owner_name'];
+        phoneNumber = data['phone_number'];
+        logoUrl = data['logo_url']; // sudah full URL dari Laravel
+      });
+    } else {
+      _showSnackbar('Gagal memuat profil toko');
+    }
+  }
 
   Future<void> _pickProof() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
@@ -44,7 +95,11 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
     }
 
     final customerId = 1;
+<<<<<<< HEAD
     final url = Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/deposit/$customerId');
+=======
+    final url = Uri.parse('http://192.168.100.51:8000/api/deposit/$customerId');
+>>>>>>> a114f03 (update)
 
     final request = http.MultipartRequest('POST', url)
       ..headers['Authorization'] = 'Bearer $token'
@@ -87,6 +142,7 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
   void _showSnackbar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +160,41 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (logoUrl != null)
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FullScreenImagePage(imageUrl: logoUrl!),
+                      ),
+                    );
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(60),
+                    child: Image.network(
+                      logoUrl!,
+                      fit: BoxFit.cover,
+                      width: 180,
+                      height: 180,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 10),
+            if (ownerName != null && phoneNumber != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Nama Rekening: $ownerName",
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text("No Rekening: $phoneNumber", style: const TextStyle(fontSize: 16)),
+                  const Divider(height: 30),
+                ],
+              ),
+
             Text("Jumlah Deposit",
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor)),
             const SizedBox(height: 8),

@@ -59,7 +59,11 @@ class _OrderHistoryPageState extends State<OrderHistoryPage> {
         throw Exception("Customer ID tidak ditemukan di SharedPreferences.");
       }
 
+<<<<<<< HEAD
       final url = Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/order/$customerId');
+=======
+      final url = Uri.parse('http://127.0.0.1:8000/api/order/$customerId');
+>>>>>>> a114f03 (update)
       final response = await http.get(url);
 
       if (response.statusCode == 200) {

@@ -7,7 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:dotted_border/dotted_border.dart';
-
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -17,6 +18,104 @@ class PaymentPage extends StatefulWidget {
 
   @override
   _PaymentPageState createState() => _PaymentPageState();
+  
+}
+class FullScreenImagePage extends StatelessWidget {
+  final String imageUrl;
+
+  const FullScreenImagePage({super.key, required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Center(
+        child: InteractiveViewer( // memungkinkan zoom dan geser
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+    );
+  }
+}
+class PickLocationPage extends StatefulWidget {
+  @override
+  _PickLocationPageState createState() => _PickLocationPageState();
+}
+
+class _PickLocationPageState extends State<PickLocationPage> {
+  LatLng? _pickedLocation;
+  GoogleMapController? _mapController;
+
+  Future<LatLng> _getCurrentLocation() async {
+    LocationPermission permission = await Geolocator.requestPermission();
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    return LatLng(position.latitude, position.longitude);
+  }
+
+  void _selectLocation(LatLng position) {
+    setState(() {
+      _pickedLocation = position;
+    });
+  }
+
+  void _confirmLocation() {
+    if (_pickedLocation != null) {
+      Navigator.pop(context, _pickedLocation);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Pilih Lokasi")),
+      body: FutureBuilder(
+        future: _getCurrentLocation(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done &&
+              snapshot.hasData) {
+            return Stack(
+              children: [
+                GoogleMap(
+                  initialCameraPosition:
+                      CameraPosition(target: snapshot.data!, zoom: 16),
+                  onMapCreated: (controller) => _mapController = controller,
+                  onTap: _selectLocation,
+                  markers: _pickedLocation != null
+                      ? {
+                          Marker(
+                            markerId: const MarkerId('selected'),
+                            position: _pickedLocation!,
+                          )
+                        }
+                      : {},
+                ),
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: ElevatedButton.icon(
+                    onPressed: _confirmLocation,
+                    icon: const Icon(Icons.check),
+                    label: const Text("Gunakan Lokasi Ini"),
+                  ),
+                )
+              ],
+            );
+          }
+          return const Center(child: CircularProgressIndicator());
+        },
+      ),
+    );
+  }
 }
 
 class _PaymentPageState extends State<PaymentPage> {
@@ -25,12 +124,34 @@ class _PaymentPageState extends State<PaymentPage> {
   String? _name;
   int? _customerId;
   File? _bukti_pembayaran;
+  String? ownerName;
+  String? phoneNumber;
+  String? logoUrl;
 
   @override
   void initState() {
     super.initState();
     _loadCustomerData();
+    _fetchStoreProfile();
   }
+  Future<void> _fetchStoreProfile() async {
+    try {
+      final response = await http.get(Uri.parse('http://192.168.100.51:8000/api/store-profile'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'];
+        setState(() {
+          ownerName = data['owner_name'];
+          phoneNumber = data['phone_number'];
+          logoUrl = data['logo_url'];
+        });
+      } else {
+        print("Gagal memuat profil toko: ${response.body}");
+      }
+    } catch (e) {
+      print("Error mengambil profil toko: $e");
+    }
+  }
+
 
   Future<void> _clearCart() async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,6 +177,7 @@ class _PaymentPageState extends State<PaymentPage> {
       });
     }
   }
+  
 
   bool _isStockSufficient(List<Map<String, dynamic>> cartItems, Map<int, int> stockData) {
     for (var item in cartItems) {
@@ -73,7 +195,11 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<Map<int, int>> _fetchStockData() async {
+<<<<<<< HEAD
     final response = await http.get(Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/getProduct'));
+=======
+    final response = await http.get(Uri.parse('http://127.0.0.1:8000/api/getProduct'));
+>>>>>>> a114f03 (update)
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseJson = jsonDecode(response.body);
@@ -87,6 +213,7 @@ class _PaymentPageState extends State<PaymentPage> {
       throw Exception('Gagal mengambil data stok dari server');
     }
   }
+
 
 Future<void> _submitOrder() async {
   if (_formKey.currentState?.validate() ?? false) {
@@ -114,6 +241,12 @@ Future<void> _submitOrder() async {
         ..fields['status'] = 'pending'
         ..headers['Authorization'] = 'Bearer $token';
 
+      // Tambahkan koordinat hanya jika ada
+      if (_selectedCoordinates != null) {
+        request.fields['latitude'] = _selectedCoordinates!.latitude.toString();
+        request.fields['longitude'] = _selectedCoordinates!.longitude.toString();
+      }
+
       // Pastikan bukti pembayaran ada
       if (_bukti_pembayaran == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -140,14 +273,14 @@ Future<void> _submitOrder() async {
 
       // Ensure there are valid products (no empty fields)
       products.removeWhere((product) {
-  final id = product['id_product']?.toString();
-  final qty = product['quantity']?.toString();
-  final price = product['price']?.toString();
+        final id = product['id_product']?.toString();
+        final qty = product['quantity']?.toString();
+        final price = product['price']?.toString();
 
-  return id == null || id.isEmpty || 
-         qty == null || qty.isEmpty || 
-         price == null || price.isEmpty;
-});
+        return id == null || id.isEmpty || 
+              qty == null || qty.isEmpty || 
+              price == null || price.isEmpty;
+      });
 
 
       if (products.isEmpty) {
@@ -199,164 +332,229 @@ Future<void> _submitOrder() async {
   }
 }
 
-
+  LatLng? _selectedCoordinates;
 
   @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    backgroundColor: Colors.brown.shade50,
-    appBar: AppBar(
-      title: const Text("Pembayaran"),
-      backgroundColor: Colors.cyan[100],
-      elevation: 4,
-    ),
-    body: _customerId == null || _name == null
-        ? const Center(child: CircularProgressIndicator())
-        : AnimatedOpacity(
-            duration: const Duration(milliseconds: 500),
-            opacity: 1.0,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Total Pembayaran
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 10,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.receipt_long, size: 36, color: Colors.blue),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            "Total Pembayaran:\nRp ${widget.total}",
-                            style: GoogleFonts.montserrat(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[800],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // Form Input
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text("Data Pemesan", style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 10),
-                        TextFormField(
-                          enabled: false,
-                          initialValue: _name,
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.person),
-                            filled: true,
-                            fillColor: Colors.white,
-                            labelText: 'Nama Lengkap',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _addressController,
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.location_on),
-                            filled: true,
-                            fillColor: Colors.white,
-                            labelText: 'Alamat Pengiriman',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Alamat tidak boleh kosong';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 30),
-
-                        const Text("Bukti Pembayaran", style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 10),
-                        GestureDetector(
-                          onTap: _pickPaymentProof,
-                          child: DottedBorder(
-                            borderType: BorderType.RRect,
-                            radius: const Radius.circular(12),
-                            dashPattern: [8, 4],
-                            color: Colors.brown,
-                            child: Container(
-                              height: 160,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: _bukti_pembayaran != null
-                                  ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.file(
-                                        _bukti_pembayaran!,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.upload_file, color: Colors.brown, size: 40),
-                                          const SizedBox(height: 10),
-                                          const Text("Klik untuk pilih bukti pembayaran"),
-                                        ],
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 30),
-
-                        // Tombol Submit
-                        SizedBox(
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.brown.shade50,
+      appBar: AppBar(
+        title: const Text("Pembayaran"),
+        backgroundColor: Colors.cyan[100],
+        elevation: 4,
+      ),
+      body: _customerId == null || _name == null
+          ? const Center(child: CircularProgressIndicator())
+          : AnimatedOpacity(
+              duration: const Duration(milliseconds: 500),
+              opacity: 1.0,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Informasi Toko dari API
+                    if (logoUrl != null || ownerName != null || phoneNumber != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: Container(
                           width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _submitOrder,
-                            icon: const Icon(Icons.send),
-                            label: const Text('Kirim Pesanan'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[700],
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 10,
+                                offset: Offset(0, 4),
                               ),
-                              textStyle: const TextStyle(fontSize: 16),
-                            ),
+                            ],
+                          ),
+                          child: Column(
+                            children: [
+                              if (logoUrl != null)
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => FullScreenImagePage(imageUrl: logoUrl!),
+                                    ),
+                                  );
+                                },
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(60),
+                                  child: Image.network(
+                                    logoUrl!,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) => const Icon(Icons.error),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              if (ownerName != null)
+                                Text("Nama Rekening: $ownerName",
+                                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                              if (phoneNumber != null)
+                                Text("No Rekening: $phoneNumber"),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
+
+                    // Total Pembayaran
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black12,
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.receipt_long, size: 36, color: Colors.blue),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              "Total Pembayaran:\nRp ${widget.total}",
+                              style: GoogleFonts.montserrat(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 30),
+
+                    // Form Input
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("Data Pemesan", style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            enabled: false,
+                            initialValue: _name,
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.person),
+                              filled: true,
+                              fillColor: Colors.white,
+                              labelText: 'Nama Lengkap',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _addressController,
+                            readOnly: true,
+                            onTap: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => PickLocationPage()),
+                              );
+                              if (result != null && result is LatLng) {
+                                setState(() {
+                                  _selectedCoordinates = result;
+                                  _addressController.text = 'Lat: ${result.latitude}, Lng: ${result.longitude}';
+                                });
+                              }
+                            },
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(Icons.map),
+                              filled: true,
+                              fillColor: Colors.white,
+                              labelText: 'Alamat Pengiriman (klik untuk pilih dari peta)',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Silakan pilih lokasi pengiriman dari peta';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 30),
+
+                          const Text("Bukti Pembayaran", style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 10),
+                          GestureDetector(
+                            onTap: _pickPaymentProof,
+                            child: DottedBorder(
+                              borderType: BorderType.RRect,
+                              radius: const Radius.circular(12),
+                              dashPattern: [8, 4],
+                              color: Colors.brown,
+                              child: Container(
+                                height: 160,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: _bukti_pembayaran != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.file(
+                                          _bukti_pembayaran!,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.upload_file, color: Colors.brown, size: 40),
+                                            const SizedBox(height: 10),
+                                            const Text("Klik untuk pilih bukti pembayaran"),
+                                          ],
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 30),
+
+                          // Tombol Submit
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _submitOrder,
+                              icon: const Icon(Icons.send),
+                              label: const Text('Kirim Pesanan'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue[700],
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                textStyle: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-  );
-}
+    );
+  }
 }
