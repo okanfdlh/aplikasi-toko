@@ -95,11 +95,8 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
     }
 
     final customerId = 1;
-<<<<<<< HEAD
-    final url = Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/deposit/$customerId');
-=======
     final url = Uri.parse('http://192.168.100.51:8000/api/deposit/$customerId');
->>>>>>> a114f03 (update)
+
 
     final request = http.MultipartRequest('POST', url)
       ..headers['Authorization'] = 'Bearer $token'

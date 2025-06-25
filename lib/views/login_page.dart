@@ -21,14 +21,9 @@ class _LoginPageState extends State<LoginPage> {
   setState(() => _isLoading = true);
   try {
     final response = await http.post(
-<<<<<<< HEAD
-      Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/loginCustomer'),
+      Uri.parse('http://192.168.100.51:8000/api/loginCustomer'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
-=======
-      Uri.parse('http://192.168.100.51:8000/api/loginCustomer'),
-      body: {
->>>>>>> a114f03 (update)
         'email': emailController.text,
         'password': passwordController.text,
       }),

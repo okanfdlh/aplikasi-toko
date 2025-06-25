@@ -195,12 +195,7 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<Map<int, int>> _fetchStockData() async {
-<<<<<<< HEAD
-    final response = await http.get(Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/getProduct'));
-=======
     final response = await http.get(Uri.parse('http://127.0.0.1:8000/api/getProduct'));
->>>>>>> a114f03 (update)
-
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseJson = jsonDecode(response.body);
       final List<dynamic> data = responseJson['data'];
