@@ -1,14 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
-import 'home_page.dart';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:dotted_border/dotted_border.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
+
+import 'home_page.dart';
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -18,8 +20,8 @@ class PaymentPage extends StatefulWidget {
 
   @override
   _PaymentPageState createState() => _PaymentPageState();
-  
 }
+
 class FullScreenImagePage extends StatelessWidget {
   final String imageUrl;
 
@@ -35,7 +37,7 @@ class FullScreenImagePage extends StatelessWidget {
         elevation: 0,
       ),
       body: Center(
-        child: InteractiveViewer( // memungkinkan zoom dan geser
+        child: InteractiveViewer(
           child: Image.network(
             imageUrl,
             fit: BoxFit.contain,
@@ -45,79 +47,73 @@ class FullScreenImagePage extends StatelessWidget {
     );
   }
 }
+
 class PickLocationPage extends StatefulWidget {
   @override
   _PickLocationPageState createState() => _PickLocationPageState();
 }
 
 class _PickLocationPageState extends State<PickLocationPage> {
-  LatLng? _pickedLocation;
-  GoogleMapController? _mapController;
+  LatLng _pickedLocation = LatLng(-2.5489, 118.0149);
 
-  Future<LatLng> _getCurrentLocation() async {
-    LocationPermission permission = await Geolocator.requestPermission();
-    Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
-    return LatLng(position.latitude, position.longitude);
-  }
-
-  void _selectLocation(LatLng position) {
+  void _onTapMap(LatLng point) {
     setState(() {
-      _pickedLocation = position;
+      _pickedLocation = point;
     });
   }
 
   void _confirmLocation() {
-    if (_pickedLocation != null) {
-      Navigator.pop(context, _pickedLocation);
-    }
+    Navigator.pop(context, _pickedLocation);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Pilih Lokasi")),
-      body: FutureBuilder(
-        future: _getCurrentLocation(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done &&
-              snapshot.hasData) {
-            return Stack(
-              children: [
-                GoogleMap(
-                  initialCameraPosition:
-                      CameraPosition(target: snapshot.data!, zoom: 16),
-                  onMapCreated: (controller) => _mapController = controller,
-                  onTap: _selectLocation,
-                  markers: _pickedLocation != null
-                      ? {
-                          Marker(
-                            markerId: const MarkerId('selected'),
-                            position: _pickedLocation!,
-                          )
-                        }
-                      : {},
-                ),
-                Positioned(
-                  bottom: 20,
-                  left: 20,
-                  right: 20,
-                  child: ElevatedButton.icon(
-                    onPressed: _confirmLocation,
-                    icon: const Icon(Icons.check),
-                    label: const Text("Gunakan Lokasi Ini"),
+      appBar: AppBar(title: const Text("Pilih Lokasi (OSM)")),
+      body: Stack(
+        children: [
+          FlutterMap(
+            options: MapOptions(
+              center: _pickedLocation,
+              zoom: 13.0,
+              onTap: (tapPosition, point) => _onTapMap(point),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                userAgentPackageName: 'com.example.yourapp',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    width: 80.0,
+                    height: 80.0,
+                    point: _pickedLocation,
+                    child: const Icon(
+                      Icons.location_pin,
+                      size: 40,
+                      color: Colors.red,
+                    ),
                   ),
-                )
-              ],
-            );
-          }
-          return const Center(child: CircularProgressIndicator());
-        },
+                ],
+              ),
+            ],
+          ),
+          Positioned(
+            bottom: 20,
+            left: 20,
+            right: 20,
+            child: ElevatedButton.icon(
+              onPressed: _confirmLocation,
+              icon: const Icon(Icons.check),
+              label: const Text("Gunakan Lokasi Ini"),
+            ),
+          )
+        ],
       ),
     );
   }
 }
-
 class _PaymentPageState extends State<PaymentPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _addressController = TextEditingController();
@@ -133,10 +129,18 @@ class _PaymentPageState extends State<PaymentPage> {
     super.initState();
     _loadCustomerData();
     _fetchStoreProfile();
+    _requestPermission();
   }
+  Future<void> _requestPermission() async {
+  // Jika ingin benar-benar menggunakan lokasi saat ini (misal untuk fitur lain)
+  // import 'package:geolocator/geolocator.dart'; harus diaktifkan
+  // Anda bisa menyesuaikan jika tidak menggunakan lokasi aktif
+  // Namun tetap disiapkan agar tidak error
+}
+
   Future<void> _fetchStoreProfile() async {
     try {
-      final response = await http.get(Uri.parse('http://192.168.100.51:8000/api/store-profile'));
+      final response = await http.get(Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/store-profile'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body)['data'];
         setState(() {
@@ -195,7 +199,7 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<Map<int, int>> _fetchStockData() async {
-    final response = await http.get(Uri.parse('http://127.0.0.1:8000/api/getProduct'));
+    final response = await http.get(Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/getProduct'));
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseJson = jsonDecode(response.body);
       final List<dynamic> data = responseJson['data'];
@@ -227,7 +231,7 @@ Future<void> _submitOrder() async {
       final token = prefs.getString('token') ?? '';
       print("Token: $token");
 
-      final uri = Uri.parse('http://10.0.2.2:8000/api/order');
+      final uri = Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/order');
       var request = http.MultipartRequest('POST', uri)
         ..fields['id_customer'] = _customerId.toString()
         ..fields['alamat'] = _addressController.text
