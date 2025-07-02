@@ -22,6 +22,7 @@ class PaymentPage extends StatefulWidget {
   _PaymentPageState createState() => _PaymentPageState();
 }
 
+
 class FullScreenImagePage extends StatelessWidget {
   final String imageUrl;
 
@@ -123,6 +124,8 @@ class _PaymentPageState extends State<PaymentPage> {
   String? ownerName;
   String? phoneNumber;
   String? logoUrl;
+  int ongkir = 0;
+  int totalBayar = 0;
 
   @override
   void initState() {
@@ -130,7 +133,14 @@ class _PaymentPageState extends State<PaymentPage> {
     _loadCustomerData();
     _fetchStoreProfile();
     _requestPermission();
+    _calculateOngkir();
   }
+  void _calculateOngkir() {
+    int jumlahItem = widget.cart.fold(0, (sum, item) => sum + (item['qty'] as int? ?? 0));
+    ongkir = 5000 + ((jumlahItem > 1 ? jumlahItem - 1 : 0) * 2000);
+    totalBayar = widget.total + ongkir;
+  }
+
   Future<void> _requestPermission() async {
   // Jika ingin benar-benar menggunakan lokasi saat ini (misal untuk fitur lain)
   // import 'package:geolocator/geolocator.dart'; harus diaktifkan
@@ -140,7 +150,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Future<void> _fetchStoreProfile() async {
     try {
-      final response = await http.get(Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/store-profile'));
+      final response = await http.get(Uri.parse('http://10.0.2.2:8000/api/store-profile'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body)['data'];
         setState(() {
@@ -199,7 +209,7 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<Map<int, int>> _fetchStockData() async {
-    final response = await http.get(Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/getProduct'));
+    final response = await http.get(Uri.parse('http://10.0.2.2:8000/api/getProduct'));
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseJson = jsonDecode(response.body);
       final List<dynamic> data = responseJson['data'];
@@ -231,13 +241,14 @@ Future<void> _submitOrder() async {
       final token = prefs.getString('token') ?? '';
       print("Token: $token");
 
-      final uri = Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/order');
+      final uri = Uri.parse('http://10.0.2.2:8000/api/order');
       var request = http.MultipartRequest('POST', uri)
         ..fields['id_customer'] = _customerId.toString()
         ..fields['alamat'] = _addressController.text
         ..fields['total_item'] = widget.cart.length.toString()
         ..fields['transaction_time'] = DateTime.now().toIso8601String()
         ..fields['status'] = 'pending'
+        ..fields['total'] = totalBayar.toString()
         ..headers['Authorization'] = 'Bearer $token';
 
       // Tambahkan koordinat hanya jika ada
@@ -419,19 +430,31 @@ Future<void> _submitOrder() async {
                           ),
                         ],
                       ),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.receipt_long, size: 36, color: Colors.blue),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              "Total Pembayaran:\nRp ${widget.total}",
-                              style: GoogleFonts.montserrat(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue[800],
-                              ),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("Subtotal"),
+                              Text("Rp ${widget.total}"),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("Ongkir"),
+                              Text("Rp $ongkir"),
+                            ],
+                          ),
+                          const Divider(height: 20, thickness: 1),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("Total Bayar", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+                              Text("Rp $totalBayar", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, color: Colors.blue[800])),
+                            ],
                           ),
                         ],
                       ),

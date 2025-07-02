@@ -57,7 +57,7 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
   }
 
   Future<void> _fetchStoreProfile() async {
-    final response = await http.get(Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/store-profile'));
+    final response = await http.get(Uri.parse('http://10.0.2.2:8000/api/store-profile'));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body)['data'];
       setState(() {
@@ -94,8 +94,14 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
       return;
     }
 
-    final customerId = 1;
-    final url = Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/deposit/$customerId');
+    final customerId = prefs.getInt('customer_id');
+
+    if (customerId == null) {
+      _showSnackbar("Customer ID tidak ditemukan");
+      return;
+    }
+
+    final url = Uri.parse('http://10.0.2.2:8000/api/deposit/$customerId');
 
 
     final request = http.MultipartRequest('POST', url)

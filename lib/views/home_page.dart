@@ -16,18 +16,26 @@ class HomePage extends StatelessWidget {
 
   Future<String> getToken() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString('token') ?? '';
+    String token = prefs.getString('token') ?? '';
+    return token;
   }
 
-  Future<double> getSaldo(int customerId) async {
-    String token = await getToken();
+  Future<double> getSaldo() async {
+    final prefs = await SharedPreferences.getInstance();
+    int? customerId = prefs.getInt('customer_id'); // Ambil ID yang benar
+
+    if (customerId == null) {
+      throw Exception('Customer ID tidak ditemukan');
+    }
+
+    String token = prefs.getString('token') ?? '';
 
     if (token.isEmpty) {
       throw Exception('Token tidak ditemukan');
     }
 
     final response = await http.get(
-      Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/customer/$customerId/saldo'),
+      Uri.parse('http://10.0.2.2:8000/api/customer/$customerId/saldo'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -101,7 +109,7 @@ class HomePage extends StatelessWidget {
         child: Column(
           children: [
             FutureBuilder<double>(
-              future: getSaldo(customerId),
+              future: getSaldo(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());

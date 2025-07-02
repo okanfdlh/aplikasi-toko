@@ -44,7 +44,7 @@ class _DepositHistoryPageState extends State<DepositHistoryPage> {
     if (token.isEmpty) throw Exception('Token tidak ditemukan');
 
     final response = await http.get(
-      Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/deposits/$customerId'),
+      Uri.parse('http://10.0.2.2:8000/api/deposits/$customerId'),
       headers: {
         'Authorization': 'Bearer $token',
         'Accept': 'application/json',

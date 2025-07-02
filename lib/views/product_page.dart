@@ -61,7 +61,7 @@ class _ProductPageState extends State<ProductPage> with TickerProviderStateMixin
       final token = prefs.getString('token') ?? '';
 
       final response = await http.get(
-        Uri.parse('https://backend-toko.dev-web2.babelprov.go.id/api/getProduct'),
+        Uri.parse('http://10.0.2.2:8000/api/getProduct'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
