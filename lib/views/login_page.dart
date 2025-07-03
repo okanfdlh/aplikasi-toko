@@ -21,7 +21,7 @@ class _LoginPageState extends State<LoginPage> {
   setState(() => _isLoading = true);
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/loginCustomer'),
+      Uri.parse('https://tukokite.shbhosting999.my.id/api/loginCustomer'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'email': emailController.text,

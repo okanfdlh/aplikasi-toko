@@ -21,7 +21,7 @@ class _RegisterPageState extends State<RegisterPage> {
   setState(() => _isLoading = true);
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/storeCustomer'),
+      Uri.parse('https://tukokite.shbhosting999.my.id/api/storeCustomer'),
       body: {
         'name': nameController.text,
         'email': emailController.text,

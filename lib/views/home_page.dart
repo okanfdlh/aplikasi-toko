@@ -35,7 +35,7 @@ class HomePage extends StatelessWidget {
     }
 
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:8000/api/customer/$customerId/saldo'),
+      Uri.parse('https://tukokite.shbhosting999.my.id/api/customer/$customerId/saldo'),
       headers: {'Authorization': 'Bearer $token'},
     );
 

@@ -57,7 +57,7 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
   }
 
   Future<void> _fetchStoreProfile() async {
-    final response = await http.get(Uri.parse('http://10.0.2.2:8000/api/store-profile'));
+    final response = await http.get(Uri.parse('https://tukokite.shbhosting999.my.id/api/store-profile'));
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body)['data'];
       setState(() {
@@ -101,7 +101,7 @@ class _DepositBalancePageState extends State<DepositBalancePage> {
       return;
     }
 
-    final url = Uri.parse('http://10.0.2.2:8000/api/deposit/$customerId');
+    final url = Uri.parse('https://tukokite.shbhosting999.my.id/api/deposit/$customerId');
 
 
     final request = http.MultipartRequest('POST', url)

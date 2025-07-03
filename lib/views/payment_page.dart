@@ -150,7 +150,7 @@ class _PaymentPageState extends State<PaymentPage> {
 
   Future<void> _fetchStoreProfile() async {
     try {
-      final response = await http.get(Uri.parse('http://10.0.2.2:8000/api/store-profile'));
+      final response = await http.get(Uri.parse('https://tukokite.shbhosting999.my.id/api/store-profile'));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body)['data'];
         setState(() {
@@ -209,7 +209,7 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Future<Map<int, int>> _fetchStockData() async {
-    final response = await http.get(Uri.parse('http://10.0.2.2:8000/api/getProduct'));
+    final response = await http.get(Uri.parse('https://tukokite.shbhosting999.my.id/api/getProduct'));
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseJson = jsonDecode(response.body);
       final List<dynamic> data = responseJson['data'];
@@ -241,7 +241,7 @@ Future<void> _submitOrder() async {
       final token = prefs.getString('token') ?? '';
       print("Token: $token");
 
-      final uri = Uri.parse('http://10.0.2.2:8000/api/order');
+      final uri = Uri.parse('https://tukokite.shbhosting999.my.id/api/order');
       var request = http.MultipartRequest('POST', uri)
         ..fields['id_customer'] = _customerId.toString()
         ..fields['alamat'] = _addressController.text

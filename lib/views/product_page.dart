@@ -61,7 +61,7 @@ class _ProductPageState extends State<ProductPage> with TickerProviderStateMixin
       final token = prefs.getString('token') ?? '';
 
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8000/api/getProduct'),
+        Uri.parse('https://tukokite.shbhosting999.my.id/api/getProduct'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
@@ -217,7 +217,7 @@ Widget build(BuildContext context) {
                   itemBuilder: (context, index) {
                     final product = filteredProducts[index];
                     final imageUrl = product['image'] != null
-                        ? 'http://10.0.2.2:8000/storage/products/${product['image']}'
+                        ? 'https://tukokite.shbhosting999.my.id/storage/products/${product['image']}'
                         : null;
 
                     return SlideTransition(
