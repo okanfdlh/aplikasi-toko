@@ -22,7 +22,6 @@ class PaymentPage extends StatefulWidget {
   _PaymentPageState createState() => _PaymentPageState();
 }
 
-
 class FullScreenImagePage extends StatelessWidget {
   final String imageUrl;
 
@@ -125,7 +124,9 @@ class _PaymentPageState extends State<PaymentPage> {
   String? phoneNumber;
   String? logoUrl;
   int ongkir = 0;
-  int totalBayar = 0;
+  int get subtotal => calculateTotalWithDiscount();
+  int get totalBayar => subtotal + ongkir;
+
 
   @override
   void initState() {
@@ -134,11 +135,81 @@ class _PaymentPageState extends State<PaymentPage> {
     _fetchStoreProfile();
     _requestPermission();
     _calculateOngkir();
+    _updateCartWithDiscount();
+
+    for (var item in widget.cart) {
+      print("Item: ${item['name']} - Diskon: ${item['diskon']}");
+    }
+
   }
+  Future<void> _updateCartWithDiscount() async {
+  final discounts = await fetchProductDiscounts();
+  setState(() {
+    for (var item in widget.cart) {
+      final diskon = discounts[item['id']] ?? 0.0;
+      item['diskon'] = diskon;
+    }
+  });
+}
+  // void _calculateOngkir() {
+  //   int jumlahItem = widget.cart.fold(0, (sum, item) => sum + (item['qty'] as int? ?? 0));
+  //   ongkir = 5000 + ((jumlahItem > 1 ? jumlahItem - 1 : 0) * 2000);
+  //   totalBayar = widget.total + ongkir;
+  // }
+Future<Map<int, double>> fetchProductDiscounts() async {
+  final response = await http.get(Uri.parse('https://tukokite.shbhosting999.my.id/api/getProduct'));
+
+  if (response.statusCode == 200) {
+    final List data = jsonDecode(response.body)['data'];
+    return {
+      for (var product in data)
+        product['id']: double.tryParse(product['diskon']?.toString() ?? '0') ?? 0.0,
+    };
+  } else {
+    throw Exception('Gagal memuat diskon produk');
+  }
+}
+int calculateTotalWithDiscount() {
+  int total = 0;
+  for (var item in widget.cart) {
+    int qty = item['qty'] ?? 0;
+    int price = item['price'] ?? 0;
+    double diskon = double.tryParse(item['diskon']?.toString() ?? '0') ?? 0.0;
+
+    double discountedPrice = price - diskon;
+    total += (discountedPrice * qty).round();
+  }
+  return total;
+}
+
+
+ Future<int> calculateTotalFromAPI() async {
+  final discounts = await fetchProductDiscounts();
+  int total = 0;
+
+  for (var item in widget.cart) {
+    int productId = item['id'];
+    int qty = item['qty'] ?? 0;
+    int price = item['price'] ?? 0;
+    double diskon = discounts[productId] ?? 0;
+
+    double discountedPrice = (price - diskon).clamp(0, price).toDouble();
+    total += (discountedPrice * qty).round();
+  }
+
+  return total;
+}
+
+
+
   void _calculateOngkir() {
     int jumlahItem = widget.cart.fold(0, (sum, item) => sum + (item['qty'] as int? ?? 0));
     ongkir = 5000 + ((jumlahItem > 1 ? jumlahItem - 1 : 0) * 2000);
-    totalBayar = widget.total + ongkir;
+
+    // Hitung total dari cart setelah diskon
+    int subtotal = calculateTotalWithDiscount();
+
+
   }
 
   Future<void> _requestPermission() async {
@@ -242,14 +313,18 @@ Future<void> _submitOrder() async {
       print("Token: $token");
 
       final uri = Uri.parse('https://tukokite.shbhosting999.my.id/api/order');
+      int subtotal = calculateTotalWithDiscount();
+      int totalFinal = subtotal + ongkir;
+
       var request = http.MultipartRequest('POST', uri)
         ..fields['id_customer'] = _customerId.toString()
         ..fields['alamat'] = _addressController.text
         ..fields['total_item'] = widget.cart.length.toString()
         ..fields['transaction_time'] = DateTime.now().toIso8601String()
         ..fields['status'] = 'pending'
-        ..fields['total'] = totalBayar.toString()
+        ..fields['total'] = totalFinal.toString()
         ..headers['Authorization'] = 'Bearer $token';
+
 
       // Tambahkan koordinat hanya jika ada
       if (_selectedCoordinates != null) {
@@ -278,6 +353,7 @@ Future<void> _submitOrder() async {
           'id_product': product['id']?.toString() ?? '',
           'quantity': product['qty']?.toString() ?? '',
           'price': product['price']?.toString() ?? '',
+          'diskon': product['diskon']?.toString() ?? '0', 
         };
       }).toList();
 
@@ -415,6 +491,72 @@ Future<void> _submitOrder() async {
                         ),
                       ),
 
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 20),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 10,
+                              offset: Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("Rincian Produk",
+                                style: GoogleFonts.montserrat(
+                                    fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 12),
+                            for (var item in widget.cart)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(item['name'] ?? 'Produk',
+                                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        if ((double.tryParse(item['diskon']?.toString() ?? '0') ?? 0) > 0)
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text("Rp ${item['price']}",
+                                                  style: const TextStyle(
+                                                      decoration: TextDecoration.lineThrough,
+                                                      color: Colors.grey)),
+                                              Text(
+                                                "Rp ${(item['price'] - (item['diskon'] ?? 0)).round()} x ${item['qty']}",
+                                                style: const TextStyle(
+                                                    color: Colors.green, fontWeight: FontWeight.bold),
+                                              ),
+                                            ],
+                                          )
+                                        else
+                                          Text(
+                                            "Rp ${item['price']} x ${item['qty']}",
+                                            style: const TextStyle(fontWeight: FontWeight.w500),
+                                          ),
+                                        Text("Total: Rp ${((
+                                          (item['price'] - (item['diskon'] ))
+                                          * item['qty']).round())}"),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
                     // Total Pembayaran
                     Container(
                       width: double.infinity,
@@ -437,7 +579,7 @@ Future<void> _submitOrder() async {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text("Subtotal"),
-                              Text("Rp ${widget.total}"),
+                              Text("Rp $subtotal"),
                             ],
                           ),
                           const SizedBox(height: 8),

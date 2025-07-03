@@ -71,8 +71,15 @@ class _CartPageState extends State<CartPage> with SingleTickerProviderStateMixin
   }
 
   int getTotalPrice() {
-    return localCart.fold(0, (total, item) =>
-        total + (item['price'] as int) * (item['qty'] as int));
+    return localCart.fold(0, (total, item) {
+      final int price = int.tryParse(item['price']?.toString() ?? '0') ?? 0;
+      final double diskon = double.tryParse(item['diskon']?.toString() ?? '0') ?? 0;
+      final int qty = int.tryParse(item['qty']?.toString() ?? '0') ?? 0;
+
+      final double discountedPrice = (price - diskon).clamp(0, price).toDouble();
+
+      return total + (discountedPrice * qty).round();
+    });
   }
 
   void goToPaymentForm() {
@@ -88,54 +95,88 @@ class _CartPageState extends State<CartPage> with SingleTickerProviderStateMixin
   }
 
   Widget _buildCartItem(Map<String, dynamic> item, int index, Animation<double> animation) {
-    return SizeTransition(
-      sizeFactor: animation,
-      child: Card(
-        elevation: 4,
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              const Icon(Icons.shopping_bag, size: 32, color: Colors.blueAccent),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item['name'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 4),
-                    Text('Harga: Rp ${item['price']}', style: const TextStyle(color: Colors.grey)),
-                  ],
-                ),
-              ),
-              Row(
+  final int price = int.tryParse(item['price']?.toString() ?? '0') ?? 0;
+  final double diskon = double.tryParse(item['diskon']?.toString() ?? '0') ?? 0;
+  final int finalPrice = (price - diskon).clamp(0, price).toInt();
+
+  return SizeTransition(
+    sizeFactor: animation,
+    child: Card(
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            const Icon(Icons.shopping_bag, size: 32, color: Colors.blueAccent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove_circle_outline),
-                    onPressed: () => updateQty(index, -1),
-                  ),
-                  Text('${item['qty']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    onPressed: () => updateQty(index, 1),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => removeItem(index),
-                  ),
+                  if (diskon > 0)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Rp $price',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            decoration: TextDecoration.lineThrough,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          'Rp $finalPrice',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Text(
+                      'Rp $price',
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  Text('Qty: ${item['qty']}'),
                 ],
               ),
-            ],
-          ),
+            ),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline),
+                  onPressed: () => updateQty(index, -1),
+                ),
+                Text('${item['qty']}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: () => updateQty(index, 1),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  onPressed: () => removeItem(index),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
+    print("Local Cart: $localCart");
     return Scaffold(
       appBar: AppBar(title: const Text('Keranjang'),
       backgroundColor: Colors.cyan[100],),

@@ -67,9 +67,12 @@ class _ProductPageState extends State<ProductPage> with TickerProviderStateMixin
           'Accept': 'application/json',
         },
       );
+      
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+        print("Produk pertama: ${data['data'][0]}");
+
         List allProducts = data['data'];
         Set<String> categoryNames = {
           for (var p in allProducts)
@@ -94,6 +97,7 @@ class _ProductPageState extends State<ProductPage> with TickerProviderStateMixin
         SnackBar(content: Text('Error: $e')),
       );
     }
+    
   }
 
   void filterByCategory(String category) {
@@ -112,6 +116,12 @@ class _ProductPageState extends State<ProductPage> with TickerProviderStateMixin
   void addToCart(Map<String, dynamic> product) {
     setState(() {
       final existingIndex = cart.indexWhere((item) => item['id'] == product['id']);
+
+      double diskon = 0;
+      if (product['diskon'] != null) {
+        diskon = double.tryParse(product['diskon'].toString()) ?? 0;
+      }
+
       if (existingIndex != -1) {
         cart[existingIndex]['qty'] += 1;
       } else {
@@ -120,6 +130,7 @@ class _ProductPageState extends State<ProductPage> with TickerProviderStateMixin
           'name': product['name'],
           'price': product['price'],
           'qty': 1,
+          'diskon': diskon,
         });
       }
     });
