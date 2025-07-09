@@ -198,21 +198,26 @@ Widget build(BuildContext context) {
               Container(
                 padding: const EdgeInsets.all(10),
                 width: double.infinity,
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: categories.map((cat) {
-                    return ChoiceChip(
-                      label: Text(cat),
-                      selected: selectedCategory == cat,
-                      onSelected: (_) => filterByCategory(cat),
-                      selectedColor: Colors.blueAccent,
-                      labelStyle: TextStyle(
-                        color: selectedCategory == cat ? Colors.white : Colors.black,
-                      ),
-                      backgroundColor: Colors.grey.shade200,
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: selectedCategory,
+                  onChanged: (value) {
+                    if (value != null) {
+                      filterByCategory(value);
+                    }
+                  },
+                  items: categories.map((cat) {
+                    return DropdownMenuItem<String>(
+                      value: cat,
+                      child: Text(cat),
                     );
                   }).toList(),
+                  dropdownColor: Colors.white,
+                  icon: const Icon(Icons.arrow_drop_down),
+                  underline: Container(
+                    height: 2,
+                    color: Colors.blueAccent,
+                  ),
                 ),
               ),
               Expanded(

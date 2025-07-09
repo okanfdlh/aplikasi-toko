@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:intl/intl.dart';
 
 class OrderHistoryPage extends StatefulWidget {
   const OrderHistoryPage({super.key});
@@ -144,7 +145,12 @@ Widget build(BuildContext context) {
                 itemBuilder: (context, index) {
                   final order = _orderHistory[index];
                   final orderItems = order['order_items'] as List<dynamic>;
-                  final total = orderItems.isNotEmpty ? orderItems[0]['total'] : '0';
+                  final total = orderItems.fold<double>(
+                      0,
+                      (sum, item) => sum + (double.tryParse(item['total'].toString()) ?? 0),
+                    );
+                  final formatter = NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0);
+                  final formattedTotal = formatter.format(total);
 
                   return Container(
                     margin: const EdgeInsets.only(bottom: 16),
@@ -243,7 +249,7 @@ Widget build(BuildContext context) {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Total: Rp$total',
+                              'Total: $formattedTotal',
                               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 12),
